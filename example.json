@@ -1,0 +1,12 @@
+{
+	"mounts" : {
+	},
+	"environment_variables" : {
+		"DISCOURSE_DEVELOPER_EMAILS" : "mail@tinco.nl",
+		"DISCOURSE_HOSTNAME" : "forum.tinco.nl",
+		"UNICORN_WORKERS" : "3",
+		"UNICORN_SIDEKIQS" : "1",
+		"RUBY_GC_MALLOC_LIMIT" : "40000000",
+		"RUBY_HEAP_MIN_SLOTS" : "800000"
+	}
+}
