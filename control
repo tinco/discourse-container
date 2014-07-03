@@ -2,9 +2,13 @@
 
 build() {
 	docker pull tinco/run-command-generator:0.1
+	docker pull tinco/discourse-docker-base:0.0.1
 }
 
 run() {
+	# prepare a network bootstrap docker container for linking
+	nnid=$(docker run ... )
+
 	command=$(docker run -i -a stdin -a stdout tinco/run-command-generator:0.1)
 	# Environment variables we can hard code
 	command="$command 
@@ -13,13 +17,17 @@ run() {
 	 -e DISCOURSE_DB_SOCKET=
 	 -e DISCOURSE_DB_HOST=localhost
 	 -e DISCOURSE_DB_PORT=5432
-	 -e DISCOURSE_DB_PASSWORD=docker
+	 -e DISCOURSE_DB_PASSWORD=
 	 -e DISCOURSE_REDIS_HOST=localhost
+	 --net=container:$nnid
 	"
-	echo "$command"
-	#cid=$(eval "$command orchardup/postgresql")
+	cid=$(eval "$command tinco/discourse-initializer")
 	#address=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $cid)
 	#echo "{\"ID\": \"$cid\", \"IPAddress\": \"$address\"}"
+
+	# clean up network bootstrap container
+	docker stop $nnid
+	docker rm $nnid
 }
 
 link() {
