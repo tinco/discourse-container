@@ -2,12 +2,18 @@
 
 build() {
 	docker pull tinco/run-command-generator:0.1
+	docker pull tinco/dynamic-docker-linker:0.0.1
 	docker pull tinco/discourse-docker-base:0.0.1
 }
 
 run() {
 	# prepare a network bootstrap docker container for linking
-	nnid=$(docker run ... )
+	nnid=$(docker run -d phusion/passenger-ruby21 sleep infinity)
+
+	config=`cat`
+
+	# Set up the links on the network bootstrap container
+	echo "$config" | docker run -i -a stdin -a stdout --privileged -v /var/run/docker.sock:/var/run/docker.sock tinco/dynamic-docker-linker $nnid
 
 	command=$(docker run -i -a stdin -a stdout tinco/run-command-generator:0.1)
 	# Environment variables we can hard code
@@ -21,12 +27,13 @@ run() {
 	 -e DISCOURSE_REDIS_HOST=localhost
 	 --net=container:$nnid
 	"
-	cid=$(eval "$command tinco/discourse-initializer")
-	#address=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $cid)
-	#echo "{\"ID\": \"$cid\", \"IPAddress\": \"$address\"}"
+	
+	cid=$(echo "$config" | eval "$command tinco/discourse-initializer")
+	address=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $cid)
+	echo "{\"ID\": \"$cid\", \"IPAddress\": \"$address\"}"
 
 	# clean up network bootstrap container
-	docker stop $nnid
+	docker stop -t=0 $nnid
 	docker rm $nnid
 }
 
