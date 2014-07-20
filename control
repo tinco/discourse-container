@@ -1,17 +1,20 @@
 #!/bin/bash
+set -e
+
+container_image="tinco/discourse-docker-base:0.0.1"
+linker="tinco/dynamic-docker-linker:0.0.3"
+run_command_generator="tinco/run-command-generator:0.1"
+
 
 build() {
-	docker pull tinco/run-command-generator:0.1
-	docker pull tinco/dynamic-docker-linker:0.0.3
-	docker pull tinco/discourse-docker-base:0.0.1
+	docker pull $run_command_generator
+	docker pull $linker
+	docker pull $container_image
 }
 
 run() {
-	set -e
-
 	# read in the configuration
 	config=`cat`
-	container_name=tinco/discourse-docker-base:0.0.1
 
 	# Enable routing on the host
 	sysctl -w net.ipv4.ip_forward=1
@@ -19,19 +22,16 @@ run() {
 
 	# Run a container that's hosts the network namespace
 	nnid=$(docker run -d phusion/passenger-ruby21 sleep infinity)
-	echo "got nnid"
 
-	echo "$config" | docker run --rm --privileged=true -i -a stdin -a stdout -a stderr --net=container:$nnid tinco/dynamic-docker-linker:0.0.3
+	do_link "$config" $nnid
 
-	command=$(echo "$config" | docker run -i -a stdin -a stdout tinco/run-command-generator:0.1)
+	command=$(echo "$config" | docker run -i -a stdin -a stdout $run_command_generator)
 
 	# Attach the container to the network container
 	command="$command -t --net=container:$nnid"
 	
-	#echo "$command"
-	
 	# Run the container as intended
-	cid=$($command $container_name)
+	cid=$($command $container_image)
 
 	# Get its IP Address
 	address=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $cid)
@@ -44,7 +44,16 @@ run() {
 }
 
 link() {
-	echo "Nothing to do."
+	nnid=$1
+	config=`cat`
+	do_link "$config" $nnid
+}
+
+# expects config on first argument, cid on second
+do_link() {
+	nnid=$2
+	config=$1
+	echo "$config" | docker run --rm --privileged=true -i -a stdin -a stdout -a stderr --net=container:$nnid $linker
 }
 
 stop() {
