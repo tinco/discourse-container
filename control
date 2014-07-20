@@ -2,39 +2,42 @@
 
 build() {
 	docker pull tinco/run-command-generator:0.1
-	docker pull tinco/dynamic-docker-linker:0.0.1
+	docker pull tinco/dynamic-docker-linker:0.0.3
 	docker pull tinco/discourse-docker-base:0.0.1
 }
 
 run() {
+	set -e
+
 	# read in the configuration
 	config=`cat`
 	container_name=tinco/discourse-docker-base:0.0.1
 
-	# Save the entrypoint of the container
-	entrypoint=$(docker inspect --format '{{ range .ContainerConfig.Entrypoint }}{{.}} {{end}}' $container_name)
+	# Enable routing on the host
+	sysctl -w net.ipv4.ip_forward=1
+	sysctl -w net.ipv4.conf.all.route_localnet=1
 
-	# run the container we want to run, but override the entrypoint
-	# so that it just immediately exits
-	cid=$(docker run -d --entrypoint=true $container_name)
+	# Run a container that's hosts the network namespace
+	nnid=$(docker run -d phusion/passenger-ruby21 sleep infinity)
+	echo "got nnid"
 
-	# Enable routing on the container
-	docker run --entrypoint "sysctl -w net.ipv4.conf.all.route_localnet=1 # dont CMD " $cid
-	docker run --entrypoint "sysctl -w net.ipv4.ip_forward=1 # dont CMD " $cid
-
-	# Set up the links on the network bootstrap container
-	echo "$config" | docker run --net=container:$cid tinco/dynamic-docker-linker:0.0.2
+	echo "$config" | docker run --rm --privileged=true -i -a stdin -a stdout -a stderr --net=container:$nnid tinco/dynamic-docker-linker:0.0.3
 
 	command=$(echo "$config" | docker run -i -a stdin -a stdout tinco/run-command-generator:0.1)
+
+	# Attach the container to the network container
+	command="$command -t --net=container:$nnid"
 	
-	#  Reset the entrypoint
-	command="$command --entrypoint=\"$entrypoint\""
+	#echo "$command"
 	
 	# Run the container as intended
-	cid=$($command $cid)
+	cid=$($command $container_name)
 
 	# Get its IP Address
 	address=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $cid)
+
+	docker stop -t=0 $nnid
+	docker rm $nnid
 
 	# Output the container information
 	echo "{\"ID\": \"$cid\", \"IPAddress\": \"$address\"}"
