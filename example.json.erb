@@ -12,8 +12,12 @@
 	"links" :
 	{
 		"5432" : {
-			"address" : "<%= ENV["ADDRESS"] %>",
+			"address" : "<%= ENV["PSQL"] %>",
 			"port" : "5432"
+		},
+		"6379" : {
+			"address" : "<%= ENV["REDIS"] %>",
+			"port" : "6379"
 		}
 	}
 }

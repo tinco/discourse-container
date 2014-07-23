@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-container_image="tinco/discourse-docker-initializer:0.0.2"
-linker="tinco/dynamic-docker-linker:0.0.3"
+container_image="tinco/discourse-docker-initializer:0.0.3"
+linker="tinco/dynamic-docker-linker:0.0.4"
 run_command_generator="tinco/run-command-generator:0.1"
 
 
@@ -17,8 +17,8 @@ run() {
 	config=`cat`
 
 	# Enable routing on the host
-	sysctl -w net.ipv4.ip_forward=1
-	sysctl -w net.ipv4.conf.all.route_localnet=1
+	sudo sysctl -w net.ipv4.ip_forward=1
+	sudo sysctl -w net.ipv4.conf.all.route_localnet=1
 
 	# Run a container that's hosts the network namespace
 	nnid=$(docker run -d phusion/passenger-ruby21 sleep infinity)
@@ -31,7 +31,7 @@ run() {
 	command="$command -t --net=container:$nnid"
 	
 	# Run the container as intended
-	cid=$($command $container_image)
+	cid=$($command -t $container_image)
 
 	# Get its IP Address
 	address=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $cid)
