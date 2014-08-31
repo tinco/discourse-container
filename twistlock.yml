@@ -1,0 +1,22 @@
+name: discourse-web
+description: Discourse Forum Web Interface
+provided_services:
+    forum:
+        port: 80
+        description: The forum interface served over http.
+consumed_services:
+    postgresql:
+        port: 5432
+        description: Postgres SQL database for general persistance.
+    redis:
+        port: 6379
+        description: Redis database for caching.
+resources:
+    logs:
+        path: /app/log/
+        description: Application logs
+environment_variables:
+    discourse_developer_emails:
+        required: true
+    discourse_hostname:
+        required: true
